@@ -1,0 +1,5 @@
+- name: Create {{ ca_name }} certificate
+  command: >
+    openssl req -config {{ ca_dir }}/openssl.cnf -extensions {{ ca_extensions }} -key {{ ca_dir }}/private/{{ ca_name }}-key.pem -new -x509 -days {{ ca_expiry_days }} -out {{ ca_dir }}/certs/{{ ca_name }}.crt
+    -subj '/CN={{ ca_common_name }}/C={{ ca_country }}/O={{ ca_organization_name }}/OU={{ ca_organizational_unit_name }}/L={{ ca_city }}/ST={{ ca_state }}'
+  when: not cert_result.stat.exists

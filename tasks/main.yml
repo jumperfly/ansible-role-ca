@@ -1,0 +1,15 @@
+- name: Ensure openssl is installed
+  package: name=openssl state=latest
+  tags: install-packages
+- include: template-ca.yml
+  tags: root-ca
+  vars:
+    ca_dir: "{{ root_ca_dir }}"
+- include: template-ca.yml
+  tags: intermediate-ca
+  vars:
+    ca_name: "{{ intermediate_ca_name }}"
+    ca_common_name: "{{ intermediate_ca_common_name }}"
+    ca_extensions: "{{ intermediate_ca_extensions }}"
+    ca_expiry_days: "{{ intermediate_ca_expiry_days }}"
+

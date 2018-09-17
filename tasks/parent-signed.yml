@@ -1,0 +1,14 @@
+- name: Create {{ ca_name }} CSR
+  shell: >
+    openssl req -config {{ ca_dir }}/openssl.cnf -new -key {{ ca_dir }}/private/{{ ca_name }}-key.pem -out /tmp/{{ ca_name }}.csr
+    -subj '/CN={{ ca_common_name }}/C={{ ca_country }}/O={{ ca_organization_name }}/OU={{ ca_organizational_unit_name }}/L={{ ca_city }}/ST={{ ca_state }}'
+  when: not cert_result.stat.exists
+- name: Create {{ ca_name }} certificate
+  command: openssl ca -config {{ parent_ca_dir }}/openssl.cnf -extensions {{ ca_extensions }} -days {{ ca_expiry_days }} -batch -out {{ ca_dir }}/certs/{{ ca_name }}.crt -infiles /tmp/{{ ca_name }}.csr
+  when: not cert_result.stat.exists
+- name: Check if {{ ca_name }} certificate chain exists
+  stat: path={{ ca_dir }}/certs/{{ ca_name }}-chain.crt
+  register: cert_chain_result
+- name: Create {{ ca_name }} certificate chain
+  shell: cat {{ ca_dir }}/certs/{{ ca_name }}.crt {{ parent_ca_dir }}/certs/{{ parent_ca_name }}.crt > {{ ca_dir }}/certs/{{ ca_name }}-chain.crt
+  when: not cert_chain_result.stat.exists

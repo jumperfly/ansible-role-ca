@@ -1,0 +1,10 @@
+galaxy_info:
+  role_name: ca
+  author: jumperfly
+  description: ansible-role-ca
+  license: Apache
+  min_ansible_version: "2.0"
+  platforms:
+    - name: EL
+      versions:
+        - "7"

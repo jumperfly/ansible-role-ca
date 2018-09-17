@@ -1,0 +1,54 @@
+- name: Initialise {{ ca_name }} CA dirs
+  file: path={{ ca_dir }}/{{ item }} state=directory
+  with_items:
+  - certs
+  - crl
+  - newcerts
+- name: Initialise {{ ca_name }} CA private dir
+  file: path={{ ca_dir }}/private state=directory mode=0700
+- name: Copy {{ ca_name }} openssl.cnf
+  template: src=openssl.cnf dest={{ ca_dir }}/openssl.cnf
+- name: Check if {{ ca_name }} private key exists
+  stat: path={{ ca_dir }}/private/{{ ca_name }}-key.pem
+  register: key_result
+- name: Check if {{ ca_name }} certificate exists
+  stat: path={{ ca_dir }}/certs/{{ ca_name }}.crt
+  register: cert_result
+# Private key only generated if no certificate found.
+# This allows the private key to be moved to a secure location after generation.
+- name: Generate {{ ca_name }} private key
+  command: openssl genrsa -out {{ ca_dir }}/private/{{ ca_name }}-key.pem 2048
+  when: not cert_result.stat.exists and not key_result.stat.exists
+- include: self-signed.yml
+  when: ca_name == parent_ca_name and not cert_result.stat.exists
+- include: parent-signed.yml
+  when: ca_name != parent_ca_name
+#- name: Create self signed cert
+#  block:
+#  - name: Create {{ ca_name }} certificate
+#    command: >
+#      openssl req -config {{ ca_dir }}/openssl.cnf -extensions {{ ca_extensions }} -key {{ ca_dir }}/private/{{ ca_name }}-key.pem -new -x509 -days {{ ca_expiry_days }} -out {{ ca_dir }}/certs/{{ ca_name }}.crt
+#      -subj '/CN={{ ca_common_name }}/C={{ ca_country }}/O={{ ca_organization_name }}/OU={{ ca_organizational_unit_name }}/L={{ ca_city }}/ST={{ ca_state }}'
+#    when: not cert_result.stat.exists
+#  when: ca_name == parent_ca_name
+#- name: Create parent signed cert
+#  block:
+#  - name: Create {{ ca_name }} CSR
+#    shell: >
+#      openssl req -config {{ ca_dir }}/openssl.cnf -new -key {{ ca_dir }}/private/{{ ca_name }}-key.pem -out /tmp/{{ ca_name }}.csr
+#      -subj '/CN={{ ca_common_name }}/C={{ ca_country }}/O={{ ca_organization_name }}/OU={{ ca_organizational_unit_name }}/L={{ ca_city }}/ST={{ ca_state }}'
+#    when: not cert_result.stat.exists
+#  - name: Create {{ ca_name }} certificate
+#    command: openssl ca -config {{ parent_ca_dir }}/openssl.cnf -extensions {{ ca_extensions }} -days {{ ca_expiry_days }} -batch -out {{ ca_dir }}/certs/{{ ca_name }}.crt -infiles /tmp/{{ ca_name }}.csr
+#    when: not cert_result.stat.exists
+#  - name: Check if {{ ca_name }} certificate chain exists
+#    stat: path={{ ca_dir }}/certs/{{ ca_name }}-chain.crt
+#    register: cert_chain_result
+#  - name: Create {{ ca_name }} certificate chain
+#    shell: cat {{ ca_dir }}/certs/{{ ca_name }}.crt {{ parent_ca_dir }}/certs/{{ parent_ca_name }}.crt > {{ ca_dir }}/certs/{{ ca_name }}-chain.crt
+#    when: not cert_chain_result.stat.exists
+#  when: ca_name != parent_ca_name
+- name: Ensure {{ ca_name }} index.txt exists
+  copy: content= dest={{ ca_dir }}/index.txt force=no
+- name: Initialise {{ ca_name }} serial file if not present
+  copy: content=1000 dest={{ ca_dir }}/serial force=no
